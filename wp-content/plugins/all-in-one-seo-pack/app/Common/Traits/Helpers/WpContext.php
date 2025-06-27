@@ -49,13 +49,20 @@ trait WpContext {
 	 *
 	 * @since 4.0.0
 	 *
-	 * @return int|null The home page ID.
+	 * @return int|false The home page ID.
 	 */
 	public function getHomePageId() {
+		static $homeId = null;
+		if ( null !== $homeId ) {
+			return $homeId;
+		}
+
 		$pageShowOnFront = ( 'page' === get_option( 'show_on_front' ) );
 		$pageOnFrontId   = get_option( 'page_on_front' );
 
-		return $pageShowOnFront && $pageOnFrontId ? (int) $pageOnFrontId : null;
+		$homeId = $pageShowOnFront && $pageOnFrontId ? (int) $pageOnFrontId : false;
+
+		return $homeId;
 	}
 
 	/**
@@ -215,6 +222,7 @@ trait WpContext {
 		$postId = apply_filters( 'aioseo_get_post_id', $postId );
 
 		// We need to check these conditions and cannot always return get_post() because we'll return the first post on archive pages (dynamic homepage, term pages, etc.).
+
 		if (
 			$this->isScreenBase( 'post' ) ||
 			$postId ||
@@ -224,6 +232,33 @@ trait WpContext {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Returns the term object for the given ID or the one from the main query.
+	 *
+	 * @since 4.7.8
+	 *
+	 * @param  int    $termId   The term ID.
+	 * @param  string $taxonomy The taxonomy.
+	 * @return \WP_Term         The term object.
+	 */
+	public function getTerm( $termId = 0, $taxonomy = '' ) {
+		$term = null;
+		if ( $termId ) {
+			$term = get_term( $termId, $taxonomy );
+		} else {
+			$term = get_queried_object();
+		}
+
+		// If the term is a Product Attribute, set its parent taxonomy to our fake
+		// "product_attributes" taxonomy so we can use the default settings.
+		if ( is_a( $term, 'WP_Term' ) && $this->isWooCommerceProductAttribute( $term->taxonomy ) ) {
+			$term           = clone $term;
+			$term->taxonomy = 'product_attributes';
+		}
+
+		return $term;
 	}
 
 	/**
@@ -378,7 +413,7 @@ trait WpContext {
 		$acfFields = $this->getAcfContent( $post );
 		foreach ( $keys as $key ) {
 			// Try ACF.
-			if ( isset( $acfFields[ $key ] ) ) {
+			if ( isset( $acfFields[ $key ] ) && is_scalar( $acfFields[ $key ] ) ) {
 				$customFieldContent .= "$acfFields[$key] ";
 				continue;
 			}

@@ -186,6 +186,8 @@ TEMPLATE
 					'myspaceUrl'      => [ 'type' => 'string' ],
 					'googlePlacesUrl' => [ 'type' => 'string' ],
 					'wordPressUrl'    => [ 'type' => 'string' ],
+					'blueskyUrl'      => [ 'type' => 'string' ],
+					'threadsUrl'      => [ 'type' => 'string' ]
 				],
 				'additionalUrls' => [ 'type' => 'string' ]
 			],
@@ -282,7 +284,6 @@ TEMPLATE
 					'maxVideoPreview'   => [ 'type' => 'number', 'default' => -1 ],
 					'maxImagePreview'   => [ 'type' => 'string', 'default' => 'large' ]
 				],
-				'sitelinks'                    => [ 'type' => 'boolean', 'default' => true ],
 				'noIndexEmptyCat'              => [ 'type' => 'boolean', 'default' => true ],
 				'removeStopWords'              => [ 'type' => 'boolean', 'default' => false ],
 				'useKeywords'                  => [ 'type' => 'boolean', 'default' => false ],
@@ -315,9 +316,29 @@ TEMPLATE
 						'paginated'      => [ 'type' => 'boolean', 'default' => false ]
 					]
 				],
+				'unwantedBots'                 => [
+					'all'      => [ 'type' => 'boolean', 'default' => false ],
+					'settings' => [
+						'googleAdsBot'             => [ 'type' => 'boolean', 'default' => false ],
+						'openAiGptBot'             => [ 'type' => 'boolean', 'default' => false ],
+						'commonCrawlCcBot'         => [ 'type' => 'boolean', 'default' => false ],
+						'googleGeminiVertexAiBots' => [ 'type' => 'boolean', 'default' => false ]
+					]
+				],
+				'searchCleanup'                => [
+					'enable'   => [ 'type' => 'boolean', 'default' => false ],
+					'settings' => [
+						'maxAllowedNumberOfChars' => [ 'type' => 'number', 'default' => 50 ],
+						'emojisAndSymbols'        => [ 'type' => 'boolean', 'default' => false ],
+						'commonPatterns'          => [ 'type' => 'boolean', 'default' => false ],
+						'redirectPrettyUrls'      => [ 'type' => 'boolean', 'default' => false ],
+						'preventCrawling'         => [ 'type' => 'boolean', 'default' => false ]
+					]
+				],
 				'blockArgs'                    => [
-					'enable'        => [ 'type' => 'boolean', 'default' => false ],
-					'logsRetention' => [ 'type' => 'string', 'default' => '{"label":"1 week","value":"week"}' ]
+					'enable'                => [ 'type' => 'boolean', 'default' => false ],
+					'optimizeUtmParameters' => [ 'type' => 'boolean', 'default' => false ],
+					'logsRetention'         => [ 'type' => 'string', 'default' => '{"label":"1 week","value":"week"}' ]
 				],
 				'removeCategoryBase'           => [ 'type' => 'boolean', 'default' => false ]
 			],
@@ -441,18 +462,6 @@ TEMPLATE
 						'dynamic' => [ 'type' => 'boolean', 'default' => true ]
 					]
 				]
-			],
-			'tools'            => [
-				'blocker' => [
-					'blockBots'    => [ 'type' => 'boolean' ],
-					'blockReferer' => [ 'type' => 'boolean' ],
-					'track'        => [ 'type' => 'boolean' ],
-					'custom'       => [
-						'enable'  => [ 'type' => 'boolean' ],
-						'bots'    => [ 'type' => 'html', 'default' => '' ],
-						'referer' => [ 'type' => 'html', 'default' => '' ]
-					]
-				]
 			]
 		],
 		'writingAssistant' => [
@@ -537,9 +546,6 @@ TEMPLATE
 		}
 
 		$hasInitialized = true;
-
-		$this->defaults['deprecated']['tools']['blocker']['custom']['bots']['default']         = implode( "\n", aioseo()->badBotBlocker->getBotList() );
-		$this->defaults['deprecated']['tools']['blocker']['custom']['referer']['default']      = implode( "\n", aioseo()->badBotBlocker->getRefererList() );
 
 		$this->defaults['searchAppearance']['global']['schema']['organizationLogo']['default'] = aioseo()->helpers->getSiteLogoUrl() ? aioseo()->helpers->getSiteLogoUrl() : '';
 

@@ -273,7 +273,11 @@ trait Wp {
 
 		$taxObjects = get_taxonomies( [], 'objects' );
 		foreach ( $taxObjects as $taxObject ) {
-			if ( empty( $taxObject->label ) || ! is_taxonomy_viewable( $taxObject ) ) {
+			if (
+				empty( $taxObject->label ) ||
+				! is_taxonomy_viewable( $taxObject ) ||
+				aioseo()->helpers->isWooCommerceProductAttribute( $taxObject->name )
+			) {
 				continue;
 			}
 
@@ -281,15 +285,6 @@ trait Wp {
 				'product_shipping_class',
 				'post_format'
 			], true ) ) {
-				continue;
-			}
-
-			// We need to exclude product attributes from this list as well.
-			if (
-				'pa_' === substr( $taxObject->name, 0, 3 ) &&
-				'manage_product_terms' === $taxObject->cap->manage_terms &&
-				! apply_filters( 'aioseo_woocommerce_product_attributes', false )
-			) {
 				continue;
 			}
 
@@ -319,6 +314,26 @@ trait Wp {
 				'restBase'           => ( $taxObject->rest_base ) ? $taxObject->rest_base : $taxObject->name,
 				'postTypes'          => $taxonomyPostTypes
 			];
+		}
+
+		if ( $this->isWooCommerceActive() ) {
+			// We inject a fake one for WooCommerce product attributes so that we can show a single set of settings
+			// instead of having to duplicate them for each attribute.
+			if ( $namesOnly ) {
+				$taxonomies[] = 'product_attributes';
+			} else {
+				$taxonomies[] = [
+					'name'               => 'product_attributes',
+					'label'              => __( 'Product Attributes', 'all-in-one-seo-pack' ),
+					'singular'           => __( 'Product Attribute', 'all-in-one-seo-pack' ),
+					'icon'               => 'dashicons-products',
+					'hierarchical'       => true,
+					'slug'               => 'product_attributes',
+					'primaryTermSupport' => true,
+					'restBase'           => 'product_attributes_class',
+					'postTypes'          => [ 'product' ]
+				];
+			}
 		}
 
 		return apply_filters( 'aioseo_public_taxonomies', $taxonomies, $namesOnly );
@@ -766,13 +781,13 @@ trait Wp {
 
 		$post = aioseo()->helpers->getPost( $postId );
 		if ( ! is_a( $post, 'WP_Post' ) ) {
-			$titles[ $postId ] = __( '(no title)' ); // phpcs:ignore AIOSEO.Wp.I18n.MissingArgDomain
+			$titles[ $postId ] = __( '(no title)', 'default' ); // phpcs:ignore AIOSEO.Wp.I18n.TextDomainMismatch, WordPress.WP.I18n.TextDomainMismatch
 
 			return $titles[ $postId ];
 		}
 
 		$title = $post->post_title;
-		$title = $title ? $title : __( '(no title)' ); // phpcs:ignore AIOSEO.Wp.I18n.MissingArgDomain
+		$title = $title ? $title : __( '(no title)', 'default' ); // phpcs:ignore AIOSEO.Wp.I18n.TextDomainMismatch, WordPress.WP.I18n.TextDomainMismatch
 
 		$titles[ $postId ] = aioseo()->helpers->decodeHtmlEntities( $title );
 
@@ -929,5 +944,43 @@ trait Wp {
 		}
 
 		return 'classic' === get_option( 'classic-editor-replace' );
+	}
+
+	/**
+	 * Redirects to a 404 Not Found page if the sitemap is disabled.
+	 *
+	 * @since 4.0.0
+	 * @version 4.8.0 Moved from the Sitemap class.
+	 *
+	 * @return void
+	 */
+	public function notFoundPage() {
+		global $wp_query; // phpcs:ignore Squiz.NamingConventions.ValidVariableName
+		$wp_query->set_404(); // phpcs:ignore Squiz.NamingConventions.ValidVariableName
+		status_header( 404 );
+		include_once get_404_template();
+		exit;
+	}
+
+	/**
+	 * Retrieves the post type labels for the given post type.
+	 *
+	 * @since 4.8.2
+	 *
+	 * @param  string $postType The name of a registered post type.
+	 * @return object           Object with all the labels as member variables.
+	 */
+	public function getPostTypeLabels( $postType ) {
+		static $postTypeLabels = [];
+		if ( ! isset( $postTypeLabels[ $postType ] ) ) {
+			$postTypeObject = get_post_type_object( $postType );
+			if ( ! is_a( $postTypeObject, 'WP_Post_Type' ) ) {
+				return null;
+			}
+
+			$postTypeLabels[ $postType ] = get_post_type_labels( $postTypeObject );
+		}
+
+		return $postTypeLabels[ $postType ];
 	}
 }

@@ -60,8 +60,19 @@ class Content {
 		}
 
 		// Check if requested index is a registered taxonomy.
-		if ( in_array( aioseo()->sitemap->indexName, aioseo()->sitemap->helpers->includedTaxonomies(), true ) ) {
+		if (
+			in_array( aioseo()->sitemap->indexName, aioseo()->sitemap->helpers->includedTaxonomies(), true ) &&
+			'product_attributes' !== aioseo()->sitemap->indexName
+		) {
 			return $this->terms( aioseo()->sitemap->indexName );
+		}
+
+		if (
+			aioseo()->helpers->isWooCommerceActive() &&
+			in_array( aioseo()->sitemap->indexName, aioseo()->sitemap->helpers->includedTaxonomies(), true ) &&
+			'product_attributes' === aioseo()->sitemap->indexName
+		) {
+			return $this->productAttributes();
 		}
 
 		return [];
@@ -288,12 +299,15 @@ class Content {
 
 			$url = get_post_type_archive_link( $postType );
 			if ( $url ) {
-				$entries[] = [
+				$entry = [
 					'loc'        => $url,
 					'lastmod'    => aioseo()->sitemap->helpers->lastModifiedPostTime( $postType ),
 					'changefreq' => aioseo()->sitemap->priority->frequency( 'archive' ),
 					'priority'   => aioseo()->sitemap->priority->priority( 'archive' ),
 				];
+
+				// To be consistent with our other entry filters, we need to pass the entry ID as well, but as null in this case.
+				$entries[] = apply_filters( 'aioseo_sitemap_archive_entry', $entry, null, $postType, 'archive' );
 			}
 		}
 
@@ -361,7 +375,7 @@ class Content {
 
 		// If the term is an ID, get the term object.
 		if ( is_numeric( $term ) ) {
-			$term = get_term( $term );
+			$term = aioseo()->helpers->getTerm( $term );
 		}
 
 		// First, check the count of the term. If it's 0, then we're dealing with a parent term that does not have
@@ -532,13 +546,16 @@ class Content {
 
 		$entries = [];
 		foreach ( $authors as $authorData ) {
-			$nicename  = $authorData->nicename ? $authorData->nicename : null;
-			$entries[] = [
-				'loc'        => ! empty( $authorData->authorUrl ) ? $authorData->authorUrl : get_author_posts_url( $authorData->ID, $nicename ),
+			$entry = [
+				'loc'        => ! empty( $authorData->authorUrl )
+					? $authorData->authorUrl
+					: get_author_posts_url( $authorData->ID, $authorData->nicename ?: '' ),
 				'lastmod'    => aioseo()->helpers->dateTimeToIso8601( $authorData->lastModified ),
 				'changefreq' => aioseo()->sitemap->priority->frequency( 'author' ),
 				'priority'   => aioseo()->sitemap->priority->priority( 'author' )
 			];
+
+			$entries[] = apply_filters( 'aioseo_sitemap_author_entry', $entry, $authorData->ID, $authorData->nicename, 'author' );
 		}
 
 		return apply_filters( 'aioseo_sitemap_author_archives', $entries );
@@ -605,10 +622,11 @@ class Content {
 			if ( $year !== $date->year ) {
 				$year         = $date->year;
 				$entry['loc'] = get_year_link( $date->year );
-				$entries[]    = $entry;
+				$entries[]    = apply_filters( 'aioseo_sitemap_date_entry', $entry, $date, 'year', 'date' );
 			}
+
 			$entry['loc'] = get_month_link( $date->year, $date->month );
-			$entries[]    = $entry;
+			$entries[]    = apply_filters( 'aioseo_sitemap_date_entry', $entry, $date, 'month', 'date' );
 		}
 
 		return apply_filters( 'aioseo_sitemap_date_archives', $entries );
@@ -639,6 +657,18 @@ class Content {
 				'description' => get_post_field( 'post_excerpt', $post->ID ),
 				'pubDate'     => aioseo()->helpers->dateTimeToRfc822( $this->getLastModified( $post ) )
 			];
+
+			// If the entry is the homepage, we need to check if the permalink structure
+			// does not have a trailing slash. If so, we need to strip it because WordPress adds it
+			// regardless for the home_url() in get_page_link() which is used in the get_permalink() function.
+			static $homeId = null;
+			if ( null === $homeId ) {
+				$homeId = get_option( 'page_for_posts' );
+			}
+
+			if ( aioseo()->helpers->getHomePageId() === $post->ID ) {
+				$entry['guid'] = aioseo()->helpers->maybeRemoveTrailingSlash( $entry['guid'] );
+			}
 
 			$entries[] = apply_filters( 'aioseo_sitemap_post_rss', $entry, $post->ID, $post->post_type, 'post' );
 		}
@@ -687,7 +717,7 @@ class Content {
 			->select( '`a`.`id`, `a`.`date_recorded`' )
 			->whereRaw( "a.is_spam = 0 AND a.hide_sitewide = 0 AND a.type NOT IN ('activity_comment', 'last_activity')" )
 			->limit( aioseo()->sitemap->linksPerIndex, aioseo()->sitemap->offset )
-			->orderBy( '`a`.`date_recorded` DESC' );
+			->orderBy( 'a.date_recorded DESC' );
 
 		$items = $query->run()
 						->result();
@@ -743,7 +773,8 @@ class Content {
 			->leftJoin( 'bp_groups_groupmeta as gm', 'g.id = gm.group_id' )
 			->whereRaw( "g.status = 'public' AND gm.meta_key = 'last_activity'" )
 			->limit( aioseo()->sitemap->linksPerIndex, aioseo()->sitemap->offset )
-			->orderBy( '`gm`.`meta_value` DESC, `g`.`date_created` DESC' );
+			->orderBy( 'gm.meta_value DESC' )
+			->orderBy( 'g.date_created DESC' );
 
 		$items = $query->run()
 						->result();
@@ -799,10 +830,10 @@ class Content {
 			->select( '`a`.`user_id` as id, `a`.`date_recorded`' )
 			->whereRaw( "a.component = 'members' AND a.type = 'last_activity'" )
 			->limit( aioseo()->sitemap->linksPerIndex, aioseo()->sitemap->offset )
-			->orderBy( '`a`.`date_recorded` DESC' );
+			->orderBy( 'a.date_recorded DESC' );
 
 		$items = $query->run()
-						->result();
+			->result();
 
 		foreach ( $items as $item ) {
 			$entry = [
@@ -832,5 +863,67 @@ class Content {
 		}
 
 		return apply_filters( 'aioseo_sitemap_posts', $entries, $postType );
+	}
+
+	/**
+	 * Returns all entries for the WooCommerce Product Attributes sitemap.
+	 * Note: This sitemap does not support pagination.
+	 *
+	 * @since 4.7.8
+	 *
+	 * @param  bool  $count Whether to return the count of the entries. This is used to determine the indexes.
+	 * @return array        The sitemap entries.
+	 */
+	public function productAttributes( $count = false ) {
+		$aioseoTermsTable           = aioseo()->core->db->prefix . 'aioseo_terms';
+		$wcAttributeTaxonomiesTable = aioseo()->core->db->prefix . 'woocommerce_attribute_taxonomies';
+		$termTaxonomyTable          = aioseo()->core->db->prefix . 'term_taxonomy';
+
+		$selectClause = 'COUNT(*) as childProductAttributes';
+		if ( ! $count ) {
+			$selectClause = aioseo()->pro ? 'tt.term_id, tt.taxonomy, at.frequency, at.priority' : 'tt.term_id, tt.taxonomy';
+		}
+
+		$joinClause   = aioseo()->pro ? "LEFT JOIN {$aioseoTermsTable} AS at ON tt.term_id = at.term_id" : '';
+		$whereClause  = aioseo()->pro ? 'AND (at.robots_noindex IS NULL OR at.robots_noindex = 0)' : '';
+		$limitClause  = $count ? '' : 'LIMIT 50000';
+
+		$result = aioseo()->core->db->execute(
+			"SELECT {$selectClause}
+			FROM {$termTaxonomyTable} AS tt
+			JOIN {$wcAttributeTaxonomiesTable} AS wat ON tt.taxonomy = CONCAT('pa_', wat.attribute_name)
+			{$joinClause}
+			WHERE wat.attribute_public = 1
+				{$whereClause}
+				AND tt.count > 0
+			{$limitClause};",
+			true
+		)->result();
+
+		if ( $count ) {
+			return ! empty( $result[0]->childProductAttributes ) ? (int) $result[0]->childProductAttributes : 0;
+		}
+
+		if ( empty( $result ) ) {
+			return [];
+		}
+
+		$entries = [];
+		foreach ( $result as $term ) {
+			$term   = (object) $term;
+			$termId = (int) $term->term_id;
+
+			$entry = [
+				'loc'        => get_term_link( $termId ),
+				'lastmod'    => $this->getTermLastModified( $termId ),
+				'changefreq' => aioseo()->sitemap->priority->frequency( 'taxonomies', $term, 'product_attributes' ),
+				'priority'   => aioseo()->sitemap->priority->priority( 'taxonomies', $term, 'product_attributes' ),
+				'images'     => aioseo()->sitemap->image->term( $term )
+			];
+
+			$entries[] = apply_filters( 'aioseo_sitemap_product_attributes', $entry, $termId, $term->taxonomy, 'term' );
+		}
+
+		return $entries;
 	}
 }

@@ -97,6 +97,7 @@ class Admin extends CommonAdmin\Admin {
 	protected function checkForRedirects() {
 		$mappedUrls = [
 			// Added to resolve an issue with the open_basedir in the IIS.
+
 			'aioseo-redirect-upgrade' => apply_filters(
 				'aioseo_upgrade_link',
 				aioseo()->helpers->utmUrl( AIOSEO_MARKETING_URL . 'lite-upgrade/', 'admin-bar', null, false )

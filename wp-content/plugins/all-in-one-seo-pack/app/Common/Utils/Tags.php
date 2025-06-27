@@ -959,7 +959,7 @@ class Tags {
 
 				$imageId = get_post_thumbnail_id( $postId );
 				$image   = (array) wp_get_attachment_image_src( $imageId, 'full' );
-				$image   = isset( $image[0] ) ? '<img src="' . $image[0] . '" style="display: block; margin: 1em auto">' : '';
+				$image   = isset( $image[0] ) ? '<img src="' . $image[0] . '" style="display: block; margin: 1em auto">' : ''; // phpcs:ignore PluginCheck.CodeAnalysis.ImageFunctions.NonEnqueuedImage
 
 				return $sampleData ? __( 'Sample featured image', 'all-in-one-seo-pack' ) : $image;
 			case 'page_number':
@@ -1027,9 +1027,27 @@ class Tags {
 			case 'tax_name':
 				return $sampleData ? __( 'Sample Taxonomy Name Value', 'all-in-one-seo-pack' ) : '';
 			case 'tax_parent_name':
-				$termObject       = get_term( $id );
-				$parentTermObject = ! empty( $termObject->parent ) ? get_term( $termObject->parent ) : '';
-				$name             = is_a( $parentTermObject, 'WP_Term' ) && ! empty( $parentTermObject->name ) ? $parentTermObject->name : '';
+				$termObject       = get_term( $id ); // Don't use the getTerm() helper here. We need the actual Product Attribute tax.
+				$parentTermObject = ! empty( $termObject->parent ) ? aioseo()->helpers->getTerm( $termObject->parent ) : '';
+				$name             = $parentTermObject->name ?? '';
+
+				if (
+					is_a( $termObject, 'WP_Term' ) &&
+					empty( $parentTermObject ) &&
+					aioseo()->helpers->isWooCommerceProductAttribute( $termObject->taxonomy )
+				) {
+					$wcAttributeTaxonomiesTable = aioseo()->core->db->prefix . 'woocommerce_attribute_taxonomies';
+					$attributeName              = str_replace( 'pa_', '', $termObject->taxonomy );
+
+					$result = aioseo()->core->db->db->get_row(
+						aioseo()->core->db->db->prepare(
+							"SELECT attribute_label FROM $wcAttributeTaxonomiesTable WHERE attribute_name = %s",
+							$attributeName
+						)
+					);
+
+					return $result->attribute_label ?? '';
+				}
 
 				return $sampleData ? __( 'Sample Parent Term Name', 'all-in-one-seo-pack' ) : $name;
 			case 'taxonomy_description':
@@ -1094,7 +1112,7 @@ class Tags {
 				$taxonomySlug = $isProduct ? 'product_cat' : $taxonomySlug;
 				$primaryTerm  = aioseo()->standalone->primaryTerm->getPrimaryTerm( $postId, $taxonomySlug );
 				if ( $primaryTerm ) {
-					$postTerms[] = get_term( $primaryTerm, $taxonomySlug );
+					$postTerms[] = aioseo()->helpers->getTerm( $primaryTerm, $taxonomySlug );
 					break;
 				}
 
@@ -1163,7 +1181,7 @@ class Tags {
 	 *
 	 * @param  string $string The string to parse customs fields out of.
 	 * @param  int    $postId The page or post ID.
-	 * @return mixed          The new title.
+	 * @return string         The new title.
 	 */
 	public function parseCustomFields( $string, $postId = 0 ) {
 		$pattern = '/' . $this->denotationChar . 'custom_field-([a-zA-Z0-9_-]+)/im';
@@ -1248,25 +1266,31 @@ class Tags {
 			return $string;
 		}
 
+		$postId = get_queried_object() ?? $postId;
+
 		foreach ( $matches as $match ) {
-			$str = '';
+			$value = '';
 			if ( ! empty( $match[1] ) ) {
 				if ( function_exists( 'get_field' ) ) {
-					$str = get_field( $match[1], get_queried_object() ?? $postId );
-				}
-
-				if ( empty( $str ) ) {
-					global $post;
-					if ( ! empty( $post ) ) {
-						$str = get_post_meta( $post->ID, $match[1], true );
+					$value = get_field( $match[1], $postId );
+					if ( ! empty( $value['url'] ) && ! empty( $value['title'] ) ) {
+						$value = "<a href='{$value['url']}'>{$value['title']}</a>";
+					}
+					if ( empty( $value ) ) {
+						$value = aioseo()->helpers->getAcfFlexibleContentField( $match[1], $postId );
 					}
 				}
-			} else {
-				$str = $match[0];
+
+				if ( empty( $value ) ) {
+					global $post;
+					if ( ! empty( $post ) ) {
+						$value = get_post_meta( $post->ID, $match[1], true );
+					}
+				}
 			}
 
-			$str = wp_strip_all_tags( $str );
-			$string = str_replace( $match[0], '%|%' . $str, $string );
+			$value  = is_scalar( $value ) ? wp_strip_all_tags( $value ) : '';
+			$string = str_replace( $match[0], '%|%' . $value, $string );
 		}
 
 		return $string;

@@ -1,0 +1,21 @@
+@use "variable" as *;
+
+// mediaquery
+@mixin mq($breakpoint) {
+	@media (max-width: #{map-get($breakpoints, $breakpoint)}) {
+		@content;
+	}
+}
+
+// hover
+@mixin hover {
+	&:focus-visible {
+    @content;
+	}
+	
+  @media (any-hover: hover) {
+		&:hover {
+	    @content;
+		}
+  }
+}

@@ -1,0 +1,51 @@
+@use "../global" as *;
+
+.c-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: $font-weight-xl;
+}
+
+.c-pagination-num,
+.c-pagination-prev,
+.c-pagination-next {
+  display: grid;
+  place-content: center;
+  width: 48px;
+  aspect-ratio: 1;
+  background-color: $color-gray-100;
+  border-radius: $border-radius-sm;
+  transition: color $duration, background-color $duration;
+
+  @include hover {
+    color: $color-white;
+    background-color: $color-blue-500;
+  }
+
+  @include mq(sm) {
+    width: 40px;
+  }
+
+  &.-current {
+    color: $color-white;
+    background-color: $color-blue-500;
+  }
+}
+
+.c-pagination-prev svg,
+.c-pagination-next svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+.c-pagination-prev svg path,
+.c-pagination-next svg path {
+  stroke: currentColor;
+}
+
+.c-pagination-prev svg {
+  rotate: 180deg;
+}

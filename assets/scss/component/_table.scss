@@ -1,0 +1,161 @@
+@use "../global" as *;
+
+.c-property-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  &.-secondary {
+    @include mq(sm) {
+      th {
+        font-size: $font-size-xs;
+        font-weight: $font-weight-xl;
+        color: $color-gray-600;
+        background-color: $color-blue-400;
+        padding: 12px 15px;
+      }
+
+      td {
+        text-align: left;
+        border-bottom: 0;
+      }
+
+      .c-property-table-img {
+        margin: revert;
+      }
+    }
+  }
+}
+
+.c-property-table thead th {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-xl;
+  color: $color-gray-600;
+  text-align: center;
+  background-color: $color-blue-400;
+  padding: 12px 15px;
+
+  @include mq(sm) {
+    padding: 12px 5px;
+  }
+}
+
+.c-property-table tbody td {
+  font-size: $font-size-sm;
+  text-align: center;
+  border-bottom: 1px solid $color-gray-200;
+  padding: 12px 15px;
+
+  @include mq(sm) {
+    padding: 10px 5px;
+  }
+}
+
+.c-property-table-img {
+  width: 100px;
+  height: 67px;
+  margin-inline: auto;
+
+  @include mq(sm) {
+    width: 80px;
+    height: 53px;
+  }
+}
+
+.c-property-table-img img {
+  height: 100%;
+  object-fit: cover;
+  border-radius: $border-radius-sm;
+}
+
+.c-property-table-new {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-xl;
+  color: $color-white;
+  background-color: $color-blue-500;
+  border-radius: $border-radius-sm;
+  padding: 3px 8px;
+  margin-right: 10px;
+}
+
+.c-property-table-favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 80px;
+  background-color: $color-gray-100;
+  border: 1px solid $color-gray-100;
+  border-radius: $border-radius-sm;
+  padding-block: 4px;
+  cursor: pointer;
+
+  &.-active {
+    color: $color-blue-500;
+    background-color: $color-white;
+    border: 1px solid $color-blue-500;
+  }
+
+  @include mq(sm) {
+    width: 40px;
+  }
+}
+
+.c-property-table-favorite-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.c-property-table-favorite-button-text {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-xl;
+}
+
+.c-property-table.-primary .c-property-table-favorite-button-text {
+  @include mq(sm) {
+    display: none;
+  }
+}
+
+.c-property-table-link {
+  display: inline-block;
+  width: 80px;
+  font-size: $font-size-sm;
+	font-weight: $font-weight-xl;
+  color: $color-white;
+  text-align: center;
+  background-color: $color-blue-500;
+  border: 1px solid $color-blue-500;
+  border-radius: $border-radius-sm;
+  padding-block: 4px;
+  position: relative;
+  transition: color $duration, background-color $duration;
+
+  @include hover {
+    color: $color-blue-500;
+    background-color: $color-white;
+  }
+
+  @include mq(sm) {
+    width: 30px;
+    padding-block: 14px;
+  }
+}
+
+.c-property-table-link svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  translate: 0 -50%;
+
+  @include mq(sm) {
+    right: 8px;
+  }
+}
+
+.c-property-table-link svg path {
+  stroke: currentColor;
+}

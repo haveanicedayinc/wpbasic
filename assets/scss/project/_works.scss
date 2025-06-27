@@ -1,0 +1,378 @@
+@use "../global" as *;
+
+#archive-works {
+    .filter {
+        @include mq(sm) {
+            position: relative;
+        }
+
+        h3 {
+            font-weight: bold;
+            font-size: 26px;
+        }
+
+        .sep2 {
+            width: 70%;
+        }
+
+        .operation-area {
+            width: 30%;
+            display: flex;
+            justify-content: flex-end;
+
+            @include mq(sm) {
+                margin-top: 48px; 
+                position: absolute;
+                right: 0px;
+                bottom: 15px;
+            }
+
+            .area-box {
+                padding-left: 40px;
+                text-align: center;
+
+                .bar {
+                    opacity: 0.0;
+                    margin: 3px auto;
+                    display: block;
+                }
+
+                &.current {
+                    .bar {
+                        opacity: 1.0;
+                    }
+                }
+
+                @include mq(sm) {
+                    padding-left: 20px;
+                    .icon {
+                        height: 18px;
+                    }
+                }
+            }
+        }
+    }//.filter
+
+
+    .works-wrapper {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-top: 75px;
+    
+        @include mq(sm) {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .box {
+            padding-bottom: 80px;
+            width: calc((100% - 24px * 2) / 2);
+
+            @include mq(sm) {
+                padding-bottom: 30px;
+                width: 100%;
+            }
+    
+            .thumbnail {
+                width: 100%;
+                // height: 380px;
+                aspect-ratio: 16 / 9;
+                height: auto;
+                object-fit: cover;
+
+                @include mq(sm) {
+                    // height: 220px;
+                }
+            }
+            .client-name {
+                font-size: 14px;
+                color: $color-gray-500;
+                font-weight: bold;
+                margin: 20px 0 12px 0;
+
+                @include mq(sm) {
+                    font-size: 12px;
+                    font-weight: normal;
+                    margin: 10px 0 5px 0;
+                    padding: 0 0;
+                }
+            }
+            .work-title {
+                font-size: 18px;
+                font-weight: bold;
+                line-height: 30px;
+
+                @include mq(sm) {
+                    font-size: 14px;
+                    padding: 0 0;
+                    line-height: 23px;
+                }
+            }
+            .viewsite {
+                font-size: 12px;
+                font-weight: normal;
+                font-family: $font-family-normal;
+                padding: 3px 18px 0 0px;
+                line-height: 28px;
+
+                @include mq(sm) {
+                    padding: 0px 18px 0 0;
+                    padding-top: 0px;
+                }
+
+                a {
+                    color: $color-gray-500;
+                    transition: color 0.3s;
+                }
+
+                .outerlink {
+                    height: 12px;
+                    margin-left: 10px;
+                    margin-bottom: 0px;
+                }
+
+                &:hover {
+                    a {
+                        color: $color-black;
+                    }
+                }
+            }
+        }
+    
+    }//.works-wrapper
+
+
+    .works-list {
+        margin-top: 75px;
+
+        @include mq(sm) {
+            margin-top: 25px;  
+        }
+
+
+        .list {
+            width: 100%;
+            height: 115px;
+            border-top: 1px solid $color-gray-200;
+            border-bottom: 1px solid $color-gray-200;
+            margin-top: -1px;
+            display: flex;
+
+            @include mq(sm) {
+                height: auto;
+            }
+
+            .client-name {
+                width: 450px;
+                font-size: 14px;
+                letter-spacing: 0.04em;
+                font-weight: normal;
+                font-family: $font-family-normal;
+                height: 115px;
+                line-height: 112px;
+
+                @include mq(sm) {
+                    width: 150px;
+                    height: auto;
+                    line-height: 140%;
+                    font-size: 11px;
+                    padding: 18px 20px 18px 0;
+                }
+            }
+            .work-title {
+                width: calc(100% - 450px - 100px);
+                display: table;
+                height: 115px;
+
+                @include mq(sm) {
+                    width: calc(100% - 150px);
+                    height: auto;
+                    padding-right: 0px;
+                }
+
+                p {
+                    display: table-cell;
+                    vertical-align: middle;
+                    padding-bottom: 3px;
+                    font-size: 15px;
+                    letter-spacing: 0.01em;
+                    font-weight: bold;
+
+                    @include mq(sm) {
+                        font-size: 13px;
+                        vertical-align: top;
+                        font-weight: normal;
+                        font-family: $font-family-normal;
+                        padding: 16px 20px 18px 0;
+                    }
+                }
+            }
+            .viewsite-wrapper {
+                width: 100px;
+                display: table;
+                height: 115px;
+
+                @include mq(sm) {
+                    width: 80px;
+                    height: auto;
+                    text-align: right;
+                    display: none;
+                }
+            }
+            .viewsite {
+                font-size: 13px;
+                font-weight: normal;
+                font-family: $font-family-normal;
+                display: table-cell;
+                vertical-align: middle;
+
+                @include mq(sm) {
+                    text-align: right;
+                }
+
+                a {
+                    color: $color-gray-500;
+                    transition: color 0.3s;
+                }
+
+                .outerlink {
+                    height: 10px;
+                    margin-left: 5px;
+                    margin-bottom: 0px;
+                }
+
+                &:hover {
+                    a {
+                        color: $color-black;
+                    }
+                }
+            }
+        }
+    }//.works-list
+
+
+}//#archive-works
+
+
+
+.recent-work {
+    margin: 120px 0;
+
+    @include mq(sm) {
+        margin: 120px 0 50px 0;
+    }
+
+    .section-title-h2 {
+        margin: 0 0 80px 0;
+        padding: 0 60px;
+
+        @include mq(sm) {
+            padding: 0 22px;
+            margin: 0 0 50px 0;
+        }
+    }
+
+    .works-wrapper {
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+
+        @include mq(sm) {
+            display: block;
+            padding: 0 20px;
+        }
+    
+        .box {
+            padding-bottom: 45px;
+            width: calc((100% - 6px * 3) / 4);
+            margin-right: 6px;
+
+            @include mq(sm) {
+                width: 100%;
+                margin-right: 0;
+                padding-bottom: 26px;
+            }
+
+            &:nth-child(4n) {
+                margin-right: 0;
+            }
+    
+            .thumbnail {
+                width: 100%;
+                aspect-ratio: 16 / 9;
+                height: auto;
+                object-fit: cover;
+
+                @include mq(sm) {
+                    // height: 220px;
+                }
+            }
+            .client-name {
+                font-size: 14px;
+                color: $color-gray-500;
+                font-weight: bold;
+                margin: 20px 0 12px 0;
+                padding: 0 18px;
+
+                @include mq(sm) {
+                    font-size: 12px;
+                    font-weight: normal;
+                    margin: 10px 0 6px 0;
+                    padding: 0 0px;
+                }
+            }
+            .work-title {
+                font-size: 17px;
+                font-weight: bold;
+                padding: 0 18px;
+                line-height: 28px;
+
+                @include mq(sm) {
+                    font-size: 14px;
+                    padding: 0 0px;
+                    line-height: 23px;
+                }
+            }
+            .viewsite {
+                font-size: 12px;
+                font-weight: normal;
+                font-family: $font-family-normal;
+                padding: 3px 18px 0 18px;
+                line-height: 28px;
+
+                @include mq(sm) {
+                    padding-top: 0px;
+                    padding-left: 0;
+                }
+
+                a {
+                    color: $color-gray-500;
+                    transition: color 0.3s;
+                }
+
+                .outerlink {
+                    height: 10px;
+                    margin-left: 5px;
+                    margin-bottom: 0px;
+                }
+
+                &:hover {
+                    a {
+                        color: $color-black;
+                    }
+                }
+            }
+        }
+    
+    }//.works-wrapper
+
+    .button-area {
+        width: 100%;
+        text-align: center;
+        padding: 60px 0 60px 0;
+    }
+    
+}//.recent-work
+
+

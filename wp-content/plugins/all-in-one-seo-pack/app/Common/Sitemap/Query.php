@@ -38,34 +38,47 @@ class Query {
 		}
 
 		// Set defaults.
-		$fields  = '`p`.`ID`, `p`.`post_title`, `p`.`post_content`, `p`.`post_excerpt`, `p`.`post_type`, `p`.`post_password`, ';
-		$fields .= '`p`.`post_parent`, `p`.`post_date_gmt`, `p`.`post_modified_gmt`, `ap`.`priority`, `ap`.`frequency`';
-		$maxAge  = '';
+		$maxAge = '';
+		$fields = implode( ', ', [
+			'p.ID',
+			'p.post_excerpt',
+			'p.post_type',
+			'p.post_password',
+			'p.post_parent',
+			'p.post_date_gmt',
+			'p.post_modified_gmt',
+			'ap.priority',
+			'ap.frequency'
+		] );
 
-		if ( ! aioseo()->sitemap->helpers->excludeImages() ) {
-			$fields .= ', `ap`.`images`';
+		if ( in_array( aioseo()->sitemap->type, [ 'html', 'rss' ], true ) ) {
+			$fields .= ', p.post_title';
+		}
+
+		if ( 'general' !== aioseo()->sitemap->type || ! aioseo()->sitemap->helpers->excludeImages() ) {
+			$fields .= ', ap.images';
 		}
 
 		// Order by highest priority first (highest priority at the top),
 		// then by post modified date (most recently updated at the top).
-		$orderBy = '`ap`.`priority` DESC, `p`.`post_modified_gmt` DESC';
+		$orderBy = 'ap.priority DESC, p.post_modified_gmt DESC';
 
 		// Override defaults if passed as additional arg.
 		foreach ( $additionalArgs as $name => $value ) {
 			// Attachments need to be fetched with all their fields because we need to get their post parent further down the line.
 			$$name = esc_sql( $value );
 			if ( 'root' === $name && $value && 'attachment' !== $includedPostTypes ) {
-				$fields = '`p`.`ID`, `p`.`post_type`';
+				$fields = 'p.ID, p.post_type';
 			}
 			if ( 'count' === $name && $value ) {
-				$fields = 'count(`p`.`ID`) as total';
+				$fields = 'count(p.ID) as total';
 			}
 		}
 
 		$query = aioseo()->core->db
 			->start( aioseo()->core->db->db->posts . ' as p', true )
 			->select( $fields )
-			->leftJoin( 'aioseo_posts as ap', '`ap`.`post_id` = `p`.`ID`' )
+			->leftJoin( 'aioseo_posts as ap', 'ap.post_id = p.ID' )
 			->where( 'p.post_status', 'attachment' === $includedPostTypes ? 'inherit' : 'publish' )
 			->whereRaw( "p.post_type IN ( '$includedPostTypes' )" );
 
@@ -91,9 +104,42 @@ class Query {
 
 		$excludedPosts = aioseo()->sitemap->helpers->excludedPosts();
 
+		if ( $excludedPosts ) {
+			$query->whereRaw( "( `p`.`ID` NOT IN ( $excludedPosts ) OR post_id = $homePageId )" );
+		}
+
+		// Exclude posts assigned to excluded terms.
+		$excludedTerms = aioseo()->sitemap->helpers->excludedTerms();
+		if ( $excludedTerms ) {
+			$termRelationshipsTable = aioseo()->core->db->db->prefix . 'term_relationships';
+			$query->whereRaw("
+				( `p`.`ID` NOT IN
+					(
+						SELECT `tr`.`object_id`
+						FROM `$termRelationshipsTable` as tr
+						WHERE `tr`.`term_taxonomy_id` IN ( $excludedTerms )
+					)
+				)" );
+		}
+
+		if ( $maxAge ) {
+			$query->whereRaw( "( `p`.`post_date_gmt` >= '$maxAge' )" );
+		}
+
+		if (
+			'rss' === aioseo()->sitemap->type ||
+			(
+				aioseo()->sitemap->indexes &&
+				empty( $additionalArgs['root'] ) &&
+				empty( $additionalArgs['count'] )
+			)
+		) {
+			$query->limit( aioseo()->sitemap->linksPerIndex, aioseo()->sitemap->offset );
+		}
+
 		$isStaticHomepage = 'page' === get_option( 'show_on_front' );
 		if ( $isStaticHomepage ) {
-			$excludedPostIds = explode( ',', $excludedPosts );
+			$excludedPostIds = array_map( 'intval', explode( ',', $excludedPosts ) );
 			$blogPageId      = (int) get_option( 'page_for_posts' );
 
 			if ( in_array( 'page', $postTypesArray, true ) ) {
@@ -124,44 +170,11 @@ class Query {
 			}
 		}
 
-		if ( $excludedPosts ) {
-			$query->whereRaw( "( `p`.`ID` NOT IN ( $excludedPosts ) OR post_id = $homePageId )" );
-		}
-
-		// Exclude posts assigned to excluded terms.
-		$excludedTerms = aioseo()->sitemap->helpers->excludedTerms();
-		if ( $excludedTerms ) {
-			$termRelationshipsTable = aioseo()->core->db->db->prefix . 'term_relationships';
-			$query->whereRaw("
-				( `p`.`ID` NOT IN
-					(
-						SELECT `tr`.`object_id`
-						FROM `$termRelationshipsTable` as tr
-						WHERE `tr`.`term_taxonomy_id` IN ( $excludedTerms )
-					)
-				)" );
-		}
-
-		if ( $maxAge ) {
-			$query->whereRaw( "( `p`.`post_date_gmt` >= '$maxAge' )" );
-		}
-
-		if (
-			'rss' === aioseo()->sitemap->type ||
-			(
-				aioseo()->sitemap->indexes &&
-				empty( $additionalArgs['root'] ) &&
-				( empty( $additionalArgs['count'] ) || ! $additionalArgs['count'] )
-			)
-		) {
-			$query->limit( aioseo()->sitemap->linksPerIndex, aioseo()->sitemap->offset );
-		}
-
-		$query->orderBy( $orderBy );
+		$query->orderByRaw( $orderBy );
 		$query = $this->filterPostQuery( $query, $postTypes );
 
 		// Return the total if we are just counting the posts.
-		if ( ! empty( $additionalArgs['count'] ) && $additionalArgs['count'] ) {
+		if ( ! empty( $additionalArgs['count'] ) ) {
 			return (int) $query->run( true, 'var' )
 				->result();
 		}
@@ -362,18 +375,18 @@ class Query {
 		if (
 			aioseo()->sitemap->indexes &&
 			empty( $additionalArgs['root'] ) &&
-			( empty( $additionalArgs['count'] ) || ! $additionalArgs['count'] )
+			empty( $additionalArgs['count'] )
 		) {
 			$query->limit( aioseo()->sitemap->linksPerIndex, $offset );
 		}
 
 		// Return the total if we are just counting the terms.
-		if ( ! empty( $additionalArgs['count'] ) && $additionalArgs['count'] ) {
+		if ( ! empty( $additionalArgs['count'] ) ) {
 			return (int) $query->run( true, 'var' )
 				->result();
 		}
 
-		$terms = $query->orderBy( '`t`.`term_id` ASC' )
+		$terms = $query->orderBy( 't.term_id ASC' )
 			->run()
 			->result();
 
